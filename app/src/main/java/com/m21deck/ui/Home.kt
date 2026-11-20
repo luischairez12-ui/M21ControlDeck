@@ -63,96 +63,180 @@ private fun HomeScreen(s: DeckState) {
     val p = s.player
     val current = p.mediaId?.let(s::trackById)
     val view = LocalView.current
-    Column(Modifier.fillMaxSize().background(DeepBlack).verticalScroll(rememberScrollState())
-        .padding(top = 12.dp, bottom = 16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=22.dp), verticalAlignment=Alignment.CenterVertically) {
-            Text("FiiO", style=MaterialTheme.typography.titleLarge, fontWeight=FontWeight.Black, color=Bone)
-            Text("  |  M21", color=Dim, fontSize=14.sp)
-            Spacer(Modifier.weight(1f))
-            Text("HI-RES  •  CONTROL DECK", color=Amber, fontSize=9.sp)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) {
-            Column(Modifier.width(44.dp), horizontalAlignment=Alignment.CenterHorizontally) {
-                Icon(Icons.Default.Apps, "All apps", Modifier.size(20.dp).clickable { s.page = Page.APPS }, tint=Dim)
-                Spacer(Modifier.height(45.dp))
-                Text("VOL\nUP", modifier=Modifier.clickable { p.adjustVolume(1) }, fontSize=10.sp, color=Dim, lineHeight=12.sp)
-                Spacer(Modifier.height(45.dp))
-                Text("VOL\nDOWN", modifier=Modifier.clickable { p.adjustVolume(-1) }, fontSize=10.sp, color=Dim, lineHeight=12.sp)
+    var showStreamingApps by remember { mutableStateOf(false) }
+
+    // The M21 has a compact 4.7-inch screen. Calculate every major section from
+    // the measured safe-area height instead of letting a tall Column scroll.
+    BoxWithConstraints(Modifier.fillMaxSize().background(DeepBlack)) {
+        val isTight = maxHeight < 650.dp
+        val artHeight = (maxHeight * (if(s.compact) 0.18f else if(isTight) 0.215f else 0.245f))
+            .coerceIn(92.dp, 172.dp)
+        val dialSize = (maxWidth * 0.32f).coerceIn(98.dp, 136.dp)
+        val smallKnobSize = if(isTight) 42.dp else 49.dp
+        val dockHeight = if(isTight) 59.dp else 69.dp
+
+        Column(
+            Modifier.fillMaxSize().padding(top=4.dp,bottom=7.dp),
+            verticalArrangement=Arrangement.SpaceBetween
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal=17.dp).height(25.dp),
+                verticalAlignment=Alignment.CenterVertically
+            ) {
+                Text("FiiO", fontSize=18.sp, fontWeight=FontWeight.Black,color=Bone)
+                Text("  |  M21", fontSize=12.sp,color=Dim)
+                Spacer(Modifier.weight(1f))
+                Text("HI-RES  •  CONTROL DECK", color=Amber,fontSize=8.sp)
             }
-            Column(Modifier.weight(1f)) {
-                Box(Modifier.fillMaxWidth().height(if(s.compact) 155.dp else 192.dp).clip(RoundedCornerShape(23.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF2B3038),Color(0xFF101114))))) {
-                    AsyncImage(model = current?.artwork ?: R.drawable.placeholder_album,
-                        contentDescription = "Now playing album artwork", modifier=Modifier.fillMaxSize(),
-                        contentScale=androidx.compose.ui.layout.ContentScale.Crop,
-                        placeholder=painterResource(R.drawable.placeholder_album),
-                        error=painterResource(R.drawable.placeholder_album))
+
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal=5.dp),
+                verticalAlignment=Alignment.Top
+            ) {
+                Column(
+                    Modifier.width(32.dp).height(artHeight),
+                    horizontalAlignment=Alignment.CenterHorizontally,
+                    verticalArrangement=Arrangement.SpaceBetween
+                ) {
+                    Icon(Icons.Default.Apps,"All apps",
+                        Modifier.size(19.dp).clickable { s.page=Page.APPS },tint=Dim)
+                    Text("VOL\nUP",modifier=Modifier.clickable { p.adjustVolume(1) },
+                        color=Dim,fontSize=9.sp,lineHeight=10.sp)
+                    Text("VOL\nDOWN",modifier=Modifier.clickable { p.adjustVolume(-1) },
+                        color=Dim,fontSize=9.sp,lineHeight=10.sp)
                 }
-                Spacer(Modifier.height(10.dp))
-                Text(p.title, color=Bone, fontSize=20.sp, fontWeight=FontWeight.SemiBold,
-                    maxLines=1, overflow=TextOverflow.Ellipsis)
-                Text(p.artist, color=Dim, fontSize=13.sp, maxLines=1, overflow=TextOverflow.Ellipsis)
-                Row(verticalAlignment=Alignment.CenterVertically) {
-                    Text(current?.mimeType?.substringAfter('/')?.uppercase() ?: "LOCAL AUDIO", color=Amber, fontSize=10.sp)
-                    Spacer(Modifier.width(8.dp))
-                    Text("•", color=Dim)
-                    Spacer(Modifier.width(8.dp))
-                    Text(current?.let { time(it.durationMs) } ?: "Offline music", color=Dim,fontSize=10.sp)
-                    Spacer(Modifier.weight(1f))
-                    Icon(if(current?.id in s.favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        "Favorite", Modifier.size(20.dp).clickable { current?.id?.let { s.toggleFavorite(it) } }, tint=Amber)
+                Column(Modifier.weight(1f)) {
+                    Box(
+                        Modifier.fillMaxWidth().height(artHeight)
+                            .clip(RoundedCornerShape(17.dp))
+                            .background(Brush.verticalGradient(listOf(Color(0xFF25272B),Color(0xFF101114))))
+                    ) {
+                        AsyncImage(
+                            model=current?.artwork ?: R.drawable.placeholder_album,
+                            contentDescription="Now playing album artwork",
+                            modifier=Modifier.fillMaxSize(),
+                            contentScale=androidx.compose.ui.layout.ContentScale.Crop,
+                            placeholder=painterResource(R.drawable.placeholder_album),
+                            error=painterResource(R.drawable.placeholder_album)
+                        )
+                    }
+                    Spacer(Modifier.height(if(isTight) 3.dp else 6.dp))
+                    Text(p.title,color=Bone,fontSize=if(isTight) 17.sp else 19.sp,
+                        fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,
+                        lineHeight=21.sp)
+                    Text(p.artist,color=Dim,fontSize=if(isTight) 11.sp else 12.sp,
+                        maxLines=1,overflow=TextOverflow.Ellipsis,lineHeight=14.sp)
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Text(current?.mimeType?.substringAfter('/')?.uppercase() ?: "LOCAL AUDIO",
+                            color=Amber,fontSize=9.sp,maxLines=1)
+                        Spacer(Modifier.width(6.dp))
+                        Text("•",color=Dim,fontSize=9.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Text(current?.let { time(it.durationMs) } ?: "Offline music",
+                            color=Dim,fontSize=9.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Spacer(Modifier.weight(1f))
+                        Icon(
+                            if(current?.id in s.favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            "Favorite",Modifier.size(18.dp).clickable { current?.id?.let { s.toggleFavorite(it) } },
+                            tint=Amber
+                        )
+                    }
                 }
-            }
-            Column(Modifier.width(31.dp).padding(start=5.dp), horizontalAlignment=Alignment.CenterHorizontally) {
-                Text("HOLD", color=Dim, fontSize=9.sp)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        val progress = if (p.duration > 0) (p.position.toFloat() / p.duration).coerceIn(0f,1f) else 0f
-        Slider(progress, onValueChange = { if(p.duration > 0) p.seek((it*p.duration).toLong()) },
-            Modifier.fillMaxWidth().padding(horizontal=28.dp).height(26.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal=30.dp), horizontalArrangement=Arrangement.SpaceBetween) {
-            Text(time(p.position),fontSize=10.sp,color=Dim)
-            Text(time(p.duration),fontSize=10.sp,color=Dim)
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal=18.dp), horizontalArrangement=Arrangement.SpaceEvenly,
-            verticalAlignment=Alignment.CenterVertically) {
-            IconButton(onClick={ p.updateShuffle(!p.shuffle) }) { Icon(Icons.Default.Shuffle, "Shuffle", tint=if(p.shuffle) Amber else Dim) }
-            IconButton(onClick={p.previous()}) { Icon(Icons.Default.SkipPrevious,"Previous") }
-            Box(Modifier.size(49.dp).clip(CircleShape).background(Panel).clickable { p.toggle() },
-                contentAlignment=Alignment.Center) { Icon(if(p.playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    "Play or pause", tint=Amber, modifier=Modifier.size(30.dp)) }
-            IconButton(onClick={p.next()}) { Icon(Icons.Default.SkipNext,"Next") }
-            IconButton(onClick={p.updateRepeat(if(p.repeat==Player.REPEAT_MODE_OFF) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF)}) {
-                Icon(Icons.Default.Repeat,"Repeat", tint=if(p.repeat!=Player.REPEAT_MODE_OFF) Amber else Dim)
-            }
-        }
-        Spacer(Modifier.height(14.dp))
-        ControlPlate(s, onHaptic={ if(s.haptics) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) })
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal=18.dp).height(81.dp), verticalAlignment=Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(41.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xFF24262A), Color(0xFF131416))))
-                .border(1.dp, Color(0xFF48474A), RoundedCornerShape(41.dp)).padding(horizontal=8.dp),
-                verticalAlignment=Alignment.CenterVertically) {
-                NavTile(Icons.Default.LibraryMusic,"Library",Modifier.weight(1f)) { s.page=Page.LIBRARY }
-                Box(Modifier.width(1.dp).height(24.dp).background(Color.DarkGray))
-                NavTile(Icons.Default.QueueMusic,"Playlists",Modifier.weight(1f)) { s.page=Page.PLAYLISTS }
-                Box(Modifier.width(1.dp).height(24.dp).background(Color.DarkGray))
-                NavTile(Icons.Default.Settings,"Settings",Modifier.weight(1f)) { s.page=Page.SETTINGS }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(horizontalAlignment=Alignment.CenterHorizontally) {
-                Text("FiiO",color=Dim,fontWeight=FontWeight.Bold,fontSize=13.sp)
-                Box(Modifier.size(59.dp).border(1.dp,Color.DarkGray,CircleShape).padding(6.dp)
-                    .clip(CircleShape).background(Brush.radialGradient(listOf(Panel,DeepBlack)))
-                    .clickable { s.page=Page.QUICK },contentAlignment=Alignment.Center) {
-                    Box(Modifier.size(8.dp).background(Amber,CircleShape))
+                Box(Modifier.width(28.dp).height(artHeight),contentAlignment=Alignment.Center) {
+                    Text("HOLD",color=Dim,fontSize=8.sp)
                 }
             }
+
+            Column(Modifier.fillMaxWidth().padding(horizontal=22.dp)) {
+                val progress=if(p.duration>0) (p.position.toFloat()/p.duration).coerceIn(0f,1f) else 0f
+                Slider(
+                    value=progress,
+                    onValueChange={ if(p.duration>0) p.seek((it*p.duration).toLong()) },
+                    modifier=Modifier.fillMaxWidth().height(22.dp)
+                )
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                    Text(time(p.position),fontSize=9.sp,color=Dim)
+                    Text(time(p.duration),fontSize=9.sp,color=Dim)
+                }
+            }
+
+            Row(
+                Modifier.fillMaxWidth().height(if(isTight) 42.dp else 48.dp)
+                    .padding(horizontal=15.dp),
+                horizontalArrangement=Arrangement.SpaceEvenly,
+                verticalAlignment=Alignment.CenterVertically
+            ) {
+                IconButton(onClick={p.updateShuffle(!p.shuffle)},modifier=Modifier.size(38.dp)) {
+                    Icon(Icons.Default.Shuffle,"Shuffle",tint=if(p.shuffle) Amber else Dim)
+                }
+                IconButton(onClick={p.previous()},modifier=Modifier.size(38.dp)) {
+                    Icon(Icons.Default.SkipPrevious,"Previous",tint=Bone)
+                }
+                Box(
+                    Modifier.size(if(isTight) 41.dp else 46.dp).clip(CircleShape)
+                        .background(Panel).clickable { p.toggle() },
+                    contentAlignment=Alignment.Center
+                ) {
+                    Icon(if(p.playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        "Play or pause",tint=Amber,modifier=Modifier.size(27.dp))
+                }
+                IconButton(onClick={p.next()},modifier=Modifier.size(38.dp)) {
+                    Icon(Icons.Default.SkipNext,"Next",tint=Bone)
+                }
+                IconButton(
+                    onClick={p.updateRepeat(if(p.repeat==Player.REPEAT_MODE_OFF) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF)},
+                    modifier=Modifier.size(38.dp)
+                ) {
+                    Icon(Icons.Default.Repeat,"Repeat",tint=if(p.repeat!=Player.REPEAT_MODE_OFF) Amber else Dim)
+                }
+            }
+
+            ControlPlate(
+                s=s,
+                diameter=dialSize,
+                knobDiameter=smallKnobSize,
+                tight=isTight,
+                onSourceSelected={ source ->
+                    s.source=source
+                    if(source==Source.STREAMING) showStreamingApps=true
+                },
+                onHaptic={ if(s.haptics) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
+            )
+
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal=10.dp).height(dockHeight),
+                verticalAlignment=Alignment.CenterVertically
+            ) {
+                Row(
+                    Modifier.weight(1f).fillMaxHeight()
+                        .clip(RoundedCornerShape(39.dp))
+                        .background(Brush.verticalGradient(listOf(Color(0xFF222428),Color(0xFF121315))))
+                        .border(1.dp,Color(0xFF474448),RoundedCornerShape(39.dp))
+                        .padding(horizontal=5.dp),
+                    verticalAlignment=Alignment.CenterVertically
+                ) {
+                    NavTile(Icons.Default.LibraryMusic,"Library",Modifier.weight(1f)) {s.page=Page.LIBRARY}
+                    Box(Modifier.width(1.dp).height(22.dp).background(Color.DarkGray))
+                    NavTile(Icons.Default.QueueMusic,"Playlists",Modifier.weight(1f)) {s.page=Page.PLAYLISTS}
+                    Box(Modifier.width(1.dp).height(22.dp).background(Color.DarkGray))
+                    NavTile(Icons.Default.Settings,"Settings",Modifier.weight(1f)) {s.page=Page.SETTINGS}
+                }
+                Spacer(Modifier.width(8.dp))
+                Column(horizontalAlignment=Alignment.CenterHorizontally) {
+                    Text("FiiO",color=Dim,fontWeight=FontWeight.Bold,fontSize=10.sp)
+                    Box(
+                        Modifier.size(if(isTight) 43.dp else 51.dp)
+                            .border(1.dp,Color.DarkGray,CircleShape).padding(5.dp)
+                            .clip(CircleShape).background(Brush.radialGradient(listOf(Panel,DeepBlack)))
+                            .clickable { s.page=Page.QUICK },
+                        contentAlignment=Alignment.Center
+                    ) {
+                        Box(Modifier.size(7.dp).background(Amber,CircleShape))
+                    }
+                }
+            }
         }
-        if(s.source==Source.STREAMING) StreamingRow(s.context)
+        if(showStreamingApps) StreamingServicesDialog(s.context) {showStreamingApps=false}
     }
 }
 
@@ -168,115 +252,181 @@ private fun NavTile(icon: androidx.compose.ui.graphics.vector.ImageVector, title
 }
 
 @Composable
-private fun ControlPlate(s:DeckState, onHaptic:()->Unit) {
+private fun ControlPlate(
+    s:DeckState,
+    diameter:androidx.compose.ui.unit.Dp,
+    knobDiameter:androidx.compose.ui.unit.Dp,
+    tight:Boolean,
+    onSourceSelected:(Source)->Unit,
+    onHaptic:()->Unit
+) {
     val player=s.player
-    Row(Modifier.fillMaxWidth().padding(horizontal=17.dp)
-        .shadow(8.dp,RoundedCornerShape(30.dp))
-        .clip(RoundedCornerShape(30.dp))
-        .background(Brush.verticalGradient(listOf(Color(0xFF292B2E), Color(0xFF1C1E21))))
-        .border(1.dp,Color(0xFF48474A),RoundedCornerShape(30.dp))
-        .padding(start=15.dp,end=12.dp,top=22.dp,bottom=19.dp), verticalAlignment=Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal=9.dp)
+            .shadow(5.dp,RoundedCornerShape(25.dp))
+            .clip(RoundedCornerShape(25.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF29292B),Color(0xFF19191B))))
+            .border(1.dp,Color(0xFF464447),RoundedCornerShape(25.dp))
+            .padding(start=12.dp,end=9.dp,top=if(tight) 11.dp else 14.dp,
+                bottom=if(tight) 11.dp else 14.dp),
+        verticalAlignment=Alignment.CenterVertically
+    ) {
         Column(Modifier.weight(1f)) {
-            Text("SOURCE",color=Dim,fontSize=10.sp,letterSpacing=2.sp)
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.clip(RoundedCornerShape(25.dp)).background(DeepBlack)
-                .border(1.dp,Color(0xFF4A494A),RoundedCornerShape(25.dp))) {
+            Text("SOURCE",color=Dim,fontSize=9.sp,letterSpacing=1.sp)
+            Spacer(Modifier.height(if(tight) 5.dp else 9.dp))
+            Row(
+                Modifier.height(if(tight) 33.dp else 37.dp)
+                    .clip(RoundedCornerShape(23.dp)).background(DeepBlack)
+                    .border(1.dp,Color(0xFF484447),RoundedCornerShape(23.dp))
+            ) {
                 listOf(Source.LOCAL,Source.STREAMING).forEach { option ->
                     val selected=s.source==option
-                    Box(Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(22.dp))
-                        .background(if(selected) Color(0xFF292A2D) else Color.Transparent)
-                        .clickable { s.source=option; onHaptic() },contentAlignment=Alignment.Center) {
-                        Text(if(option==Source.LOCAL) "LOCAL" else "STREAMING",color=if(selected) Amber else Bone,
-                            fontSize=10.sp)
+                    Box(
+                        Modifier.weight(1f).fillMaxHeight()
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(if(selected) Color(0xFF313035) else Color.Transparent)
+                            .clickable {onSourceSelected(option);onHaptic()},
+                        contentAlignment=Alignment.Center
+                    ) {
+                        Text(if(option==Source.LOCAL) "LOCAL" else "STREAMING",
+                            color=if(selected) Amber else Bone,fontSize=if(tight) 9.sp else 10.sp,
+                            maxLines=1)
                     }
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement=Arrangement.spacedBy(13.dp)) {
-                SmallKnob("EQ") { s.page=Page.EQ; onHaptic() }
-                SmallKnob("MODE") { player.cycleMode(); onHaptic() }
+            Spacer(Modifier.height(if(tight) 10.dp else 14.dp))
+            Row(horizontalArrangement=Arrangement.spacedBy(if(tight) 8.dp else 12.dp)) {
+                SmallKnob("EQ",knobDiameter) {s.page=Page.EQ;onHaptic()}
+                SmallKnob("MODE",knobDiameter) {player.cycleMode();onHaptic()}
             }
-            Text(when {
-                player.shuffle -> "Shuffle"
-                player.repeat==Player.REPEAT_MODE_ALL -> "Repeat all"
-                player.repeat==Player.REPEAT_MODE_ONE -> "Repeat one"
-                else -> "Normal"
-            },fontSize=10.sp,color=Amber,modifier=Modifier.padding(top=7.dp))
+            Spacer(Modifier.height(4.dp))
+            Text(
+                when {
+                    player.shuffle->"Shuffle"
+                    player.repeat==Player.REPEAT_MODE_ALL->"Repeat all"
+                    player.repeat==Player.REPEAT_MODE_ONE->"Repeat one"
+                    else->"Normal"
+                },
+                color=Amber,fontSize=9.sp,
+                maxLines=1
+            )
         }
-        Spacer(Modifier.width(12.dp))
-        VolumeDial(s,onHaptic)
+        Spacer(Modifier.width(7.dp))
+        VolumeDial(s,onHaptic,diameter)
     }
 }
 
 @Composable
-private fun SmallKnob(title:String,onClick:()->Unit) {
+private fun SmallKnob(
+    title:String,diameter:androidx.compose.ui.unit.Dp,onClick:()->Unit
+) {
     Column(horizontalAlignment=Alignment.CenterHorizontally) {
-        Box(Modifier.size(57.dp).shadow(5.dp,CircleShape).clip(CircleShape)
-            .background(Brush.radialGradient(listOf(Color(0xFF44464A),Color(0xFF151618))))
-            .border(2.dp,Color(0xFF090A0C),CircleShape).clickable(onClick=onClick),
-            contentAlignment=Alignment.TopCenter) {
-            Box(Modifier.padding(top=6.dp).width(3.dp).height(13.dp).background(Amber, RoundedCornerShape(3.dp)))
+        Box(
+            Modifier.size(diameter).shadow(4.dp,CircleShape).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color(0xFF434346),Color(0xFF151516))))
+                .border(2.dp,Color(0xFF09090A),CircleShape).clickable(onClick=onClick),
+            contentAlignment=Alignment.TopCenter
+        ) {
+            Box(Modifier.padding(top=5.dp).width(3.dp).height(10.dp)
+                .background(Amber,RoundedCornerShape(3.dp)))
         }
-        Spacer(Modifier.height(8.dp))
-        Text(title,color=Bone,fontSize=11.sp,letterSpacing=1.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(title,color=Bone,fontSize=10.sp,letterSpacing=0.5.sp)
     }
 }
 
 @Composable
-private fun VolumeDial(s:DeckState,onHaptic:()->Unit) {
+private fun VolumeDial(
+    s:DeckState,
+    onHaptic:()->Unit,
+    diameter:androidx.compose.ui.unit.Dp
+) {
     val p=s.player
-    val fraction = p.volume.toFloat()/p.maxVolume
-    Box(Modifier.size(154.dp).clip(CircleShape)
-        .pointerInput(p.maxVolume, s.dialSensitivity) {
-            fun angle(pos: Offset): Float = Math.toDegrees(atan2(
-                (pos.y - size.height/2f).toDouble(), (pos.x - size.width/2f).toDouble()
-            )).toFloat()
-            var previousAngle: Float? = null
-            detectDragGestures(onDragStart={ previousAngle=angle(it) },onDragEnd={previousAngle=null}) { change,_ ->
-                val newAngle=angle(change.position)
-                val previous=previousAngle ?: newAngle
-                var delta=newAngle-previous
-                if(delta>180f) delta-=360f
-                if(delta< -180f) delta+=360f
-                val old=p.volume
-                p.setVolumeFraction(p.volume.toFloat()/p.maxVolume + delta/360f * s.dialSensitivity)
-                if(old!=p.volume) onHaptic()
-                previousAngle=newAngle
-                change.consume()
-            }
-        }, contentAlignment=Alignment.Center) {
+    val fraction=p.volume.toFloat()/p.maxVolume.coerceAtLeast(1)
+    Box(
+        Modifier.size(diameter).clip(CircleShape)
+            .pointerInput(p.maxVolume,s.dialSensitivity) {
+                fun angle(pos:Offset):Float=Math.toDegrees(
+                    atan2((pos.y-size.height/2f).toDouble(),(pos.x-size.width/2f).toDouble())
+                ).toFloat()
+                var previousAngle:Float?=null
+                detectDragGestures(onDragStart={previousAngle=angle(it)},
+                    onDragEnd={previousAngle=null}) {change,_->
+                    val newAngle=angle(change.position)
+                    val previous=previousAngle?:newAngle
+                    var delta=newAngle-previous
+                    if(delta>180f)delta-=360f
+                    if(delta< -180f)delta+=360f
+                    val old=p.volume
+                    p.setVolumeFraction(p.volume.toFloat()/p.maxVolume.coerceAtLeast(1)+
+                        delta/360f*s.dialSensitivity)
+                    if(old!=p.volume)onHaptic()
+                    previousAngle=newAngle
+                    change.consume()
+                }
+            },
+        contentAlignment=Alignment.Center
+    ) {
         Canvas(Modifier.fillMaxSize()) {
             val c=center
-            val outer=size.minDimension/2f - 3.dp.toPx()
-            drawCircle(brush=Brush.radialGradient(listOf(Color(0xFF444448),DeepBlack),center=c,radius=outer),radius=outer)
-            drawCircle(color=Color(0xFF050506),radius=outer*.88f,style=Stroke(5.dp.toPx()))
-            drawCircle(brush=Brush.radialGradient(listOf(Color(0xFF48494B),Color(0xFF242527),Color(0xFF111214)),center=Offset(c.x*.70f,c.y*.65f),radius=outer*1.15f),radius=outer*.75f)
+            val outer=size.minDimension/2f-3.dp.toPx()
+            drawCircle(brush=Brush.radialGradient(listOf(Color(0xFF424245),DeepBlack),center=c,radius=outer),radius=outer)
+            drawCircle(color=Color(0xFF070708),radius=outer*.88f,style=Stroke(5.dp.toPx()))
+            drawCircle(
+                brush=Brush.radialGradient(
+                    listOf(Color(0xFF434346),Color(0xFF242425),Color(0xFF111112)),
+                    center=Offset(c.x*.70f,c.y*.65f),radius=outer*1.15f
+                ),
+                radius=outer*.75f
+            )
             drawArc(color=Amber,startAngle=-90f,sweepAngle=360f*fraction,useCenter=false,
-                topLeft=Offset(c.x-outer*.91f,c.y-outer*.91f),size=androidx.compose.ui.geometry.Size(outer*1.82f,outer*1.82f),
+                topLeft=Offset(c.x-outer*.91f,c.y-outer*.91f),
+                size=androidx.compose.ui.geometry.Size(outer*1.82f,outer*1.82f),
                 style=Stroke(3.dp.toPx(),cap=StrokeCap.Round))
         }
         Column(horizontalAlignment=Alignment.CenterHorizontally) {
-            Text("VOLUME",fontSize=9.sp,color=Dim,letterSpacing=1.sp)
-            Text("${(fraction*100).toInt()}%",fontSize=21.sp,color=Bone,fontWeight=FontWeight.Medium)
+            Text("VOLUME",fontSize=8.sp,color=Dim,letterSpacing=0.8.sp)
+            Text("${(fraction*100).toInt()}%",fontSize=if(diameter<116.dp) 17.sp else 20.sp,
+                color=Bone,fontWeight=FontWeight.Medium)
         }
     }
 }
 
 @Composable
-private fun StreamingRow(context:Context) {
-    val candidates = listOf("Spotify" to "com.spotify.music", "TIDAL" to "com.aspiro.tidal",
-        "Apple Music" to "com.apple.android.music", "YouTube Music" to "com.google.android.apps.youtube.music")
-    Column(Modifier.fillMaxWidth().padding(horizontal=22.dp,vertical=12.dp)) {
-        Text("STREAMING SERVICES",fontSize=11.sp,color=Amber,letterSpacing=1.sp)
-        candidates.forEach { (label,pkg) ->
-            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-            if(intent!=null) TextButton(onClick={ context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) {
-                Icon(Icons.Default.PlayArrow,null,Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Open $label")
+private fun StreamingServicesDialog(context:Context,onDismiss:()->Unit) {
+    val candidates=listOf(
+        "Spotify" to "com.spotify.music",
+        "TIDAL" to "com.aspiro.tidal",
+        "Apple Music" to "com.apple.android.music",
+        "YouTube Music" to "com.google.android.apps.youtube.music"
+    )
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text("Streaming services")},
+        text={
+            Column {
+                Text("Choose an installed music app",color=Dim,fontSize=12.sp)
+                Spacer(Modifier.height(9.dp))
+                var found=false
+                candidates.forEach {(label,pkg)->
+                    val intent=context.packageManager.getLaunchIntentForPackage(pkg)
+                    if(intent!=null) {
+                        found=true
+                        TextButton(onClick={
+                            onDismiss()
+                            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }) {
+                            Icon(Icons.Default.PlayArrow,null,Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(label)
+                        }
+                    }
+                }
+                if(!found) Text("No supported streaming apps installed. You can open other apps from the app drawer.",color=Dim)
             }
-        }
-        Text("Streaming playback controls are controlled by the selected app. Global media-session integration is planned for the device-testing batch.",
-            color=Dim,fontSize=11.sp)
-    }
+        },
+        confirmButton={TextButton(onClick=onDismiss){Text("Close")}}
+    )
 }
 
 fun time(ms:Long):String {
