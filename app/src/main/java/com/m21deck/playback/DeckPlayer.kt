@@ -84,8 +84,8 @@ class DeckPlayer(private val context: Context) {
     fun next() { controller?.seekToNextMediaItem(); snapshot() }
     fun previous() { controller?.seekToPreviousMediaItem(); snapshot() }
     fun seek(ms: Long) { controller?.seekTo(ms); snapshot() }
-    fun setShuffle(enabled: Boolean) { controller?.shuffleModeEnabled = enabled; snapshot() }
-    fun setRepeat(mode: Int) { controller?.repeatMode = mode; snapshot() }
+    fun updateShuffle(enabled: Boolean) { controller?.shuffleModeEnabled = enabled; snapshot() }
+    fun updateRepeat(mode: Int) { controller?.repeatMode = mode; snapshot() }
     fun cycleMode() {
         val c = controller ?: return
         when {

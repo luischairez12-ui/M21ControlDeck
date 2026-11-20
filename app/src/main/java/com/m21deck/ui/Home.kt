@@ -118,13 +118,13 @@ private fun HomeScreen(s: DeckState) {
         }
         Row(Modifier.fillMaxWidth().padding(horizontal=18.dp), horizontalArrangement=Arrangement.SpaceEvenly,
             verticalAlignment=Alignment.CenterVertically) {
-            IconButton(onClick={ p.setShuffle(!p.shuffle) }) { Icon(Icons.Default.Shuffle, "Shuffle", tint=if(p.shuffle) Amber else Dim) }
+            IconButton(onClick={ p.updateShuffle(!p.shuffle) }) { Icon(Icons.Default.Shuffle, "Shuffle", tint=if(p.shuffle) Amber else Dim) }
             IconButton(onClick={p.previous()}) { Icon(Icons.Default.SkipPrevious,"Previous") }
             Box(Modifier.size(49.dp).clip(CircleShape).background(Panel).clickable { p.toggle() },
                 contentAlignment=Alignment.Center) { Icon(if(p.playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     "Play or pause", tint=Amber, modifier=Modifier.size(30.dp)) }
             IconButton(onClick={p.next()}) { Icon(Icons.Default.SkipNext,"Next") }
-            IconButton(onClick={p.setRepeat(if(p.repeat==Player.REPEAT_MODE_OFF) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF)}) {
+            IconButton(onClick={p.updateRepeat(if(p.repeat==Player.REPEAT_MODE_OFF) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF)}) {
                 Icon(Icons.Default.Repeat,"Repeat", tint=if(p.repeat!=Player.REPEAT_MODE_OFF) Amber else Dim)
             }
         }
